@@ -1,0 +1,93 @@
+/* General Styling */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #e5e4e0;
+    font-family: Arial, sans-serif;
+}
+
+/* Game Container */
+.game-container {
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+/* Instruction Text */
+#instruction {
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+/* Choices Container */
+.choices-container {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Feedback Message */
+.feedback {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #333;
+    min-height: 30px; /* Reserve space to avoid shifting */
+    line-height: 30px; /* Center-align vertically within the space */
+    transition: opacity 0.3s; /* Smooth transition effect */
+    opacity: 0; /* Hide initially */
+}
+
+/* Show feedback */
+.feedback.show {
+    opacity: 1;
+}
+
+/* Start Button */
+.start-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .shape {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+/* General shape color overrides */
+.shape-container svg [fill="red"] {
+    fill: #eb3f34;
+}
+
+.shape-container svg [fill="blue"] {
+    fill: #0e68a6;
+}
+
+.shape-container svg [fill="yellow"] {
+    fill: #fdd60f;
+}
+
+.shape-container svg [fill="green"] {
+    fill: #479b22;
+}
+
+.shape-container svg [fill="orange"] {
+    fill: #f67d36;
+}
+
+.shape-container svg [fill="purple"] {
+    fill: #79328d;
+}
+
+.shape-container svg [fill="pink"] {
+    fill: #d65385;
+}
