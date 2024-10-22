@@ -103,6 +103,10 @@ let lastTwoQuestions = [];
 let lastIncorrectClip = null;
 let firstRound = true;
 
+// Track correct combinations per difficulty level
+let answeredCombinations = new Set();
+let unansweredCombinations = new Set();
+
 // Global Audio Variables
 let chordInterval; // Store interval reference for continuous chords
 let noteIndex = 0; // Track current note in the sequence
@@ -178,7 +182,6 @@ function playNextChord() {
     }
 }
 
-
 // Function to Start the Chord Progression Loop
 function startChordProgressionLoop() {
     selectNewProgression(); // Select an initial progression
@@ -210,17 +213,29 @@ function generateValidQuestion() {
     const colorsCombined = getCombinedLevels(colorLevel, colors);
     const shapesCombined = getCombinedLevels(shapeLevel, shapes);
 
-    let validQuestion;
-    do {
+    // Collect all remaining unanswered combinations
+    const remainingCombinations = Array.from(unansweredCombinations);
+    
+    let selectedCombination;
+    
+    if (remainingCombinations.length > 0 && Math.random() < 0.75) {
+        // 75% chance to pick an unanswered combination
+        const randomIndex = Math.floor(Math.random() * remainingCombinations.length);
+        selectedCombination = remainingCombinations[randomIndex];
+        unansweredCombinations.delete(selectedCombination); // Mark as seen
+    } else {
+        // 25% chance to generate a random combination
         const color = getRandomChoice(colorsCombined);
         const shape = getRandomChoice(shapesCombined);
-        validQuestion = { color, shape };
-    } while (lastTwoQuestions.some(
-        q => q.color === validQuestion.color && q.shape === validQuestion.shape
-    ));
-    lastTwoQuestions.push(validQuestion);
-    if (lastTwoQuestions.length > 2) lastTwoQuestions.shift();
-    return validQuestion;
+        selectedCombination = `${color}-${shape}`;
+    }
+
+    const [color, shape] = selectedCombination.split('-');
+    lastTwoQuestions.push({ color, shape });
+
+    if (lastTwoQuestions.length > 2) lastTwoQuestions.shift(); // Keep recent history
+
+    return { color, shape };
 }
 
 function generateChoices(correctChoice, numChoices) {
@@ -255,41 +270,67 @@ function createShapeElement(color, shape) {
     return element;
 }
 
+// Generate all combinations for the current difficulty level
+function generateAllCombinations(colors, shapes) {
+    const combinations = [];
+    colors.forEach(color => {
+        shapes.forEach(shape => {
+            const key = `${color}-${shape}`;
+            combinations.push(key);
+            unansweredCombinations.add(key); // Populate the set here
+        });
+    });
+    return combinations;
+}
+
+// Check if all combinations have been answered for the current level
+function allCombinationsAnswered() {
+    const colorsCombined = getCombinedLevels(colorLevel, colors);
+    const shapesCombined = getCombinedLevels(shapeLevel, shapes);
+    const allCombinations = generateAllCombinations(colorsCombined, shapesCombined);
+    return allCombinations.every(comb => answeredCombinations.has(comb));
+}
+
 // Modify the Shape Click to Play Notes in Sequence on Interaction
 function handleChoice(selectedColor, selectedShape) {
     const [correctColor, correctShape] = correctAnswer;
     const feedback = document.getElementById("feedback");
 
+    const combinationKey = `${selectedColor}-${selectedShape}`;
+
     if (selectedColor === correctColor && selectedShape === correctShape) {
         correctAnswers++;
         correctInRow++;
+        answeredCombinations.add(combinationKey); // Store the correct combination
         feedback.textContent = "Correct! Good job.";
-        feedback.classList.add('show'); // Add show class
-        playNextNote(); // Play the next note in sequence
+        feedback.classList.add('show');
+        playNextNote();
         playRandomCorrectClip().then(() => setTimeout(nextRound, 500));
     } else {
         incorrectAnswers++;
         correctInRow = 0;
         feedback.textContent = "That's not it, try again.";
-        feedback.classList.add('show'); // Add show class
+        feedback.classList.add('show');
         playRandomIncorrectClip();
     }
 
     totalQuestions++;
-    adjustDifficulty(); // Adjust difficulty based on performance
+    adjustDifficulty();
 }
 
-// Adjust Difficulty Logic
+// Adjust difficulty and reset combinations if advancing
 function adjustDifficulty() {
-    if (correctInRow >= 4 && shapeLevel < 4) {
+    if (correctInRow >= 4 && shapeLevel < 4 && allCombinationsAnswered()) {
         shapeLevel++;
         colorLevel = Math.min(colorLevel + 1, 2);
         correctInRow = 0;
+        answeredCombinations.clear(); // Reset for the new level
     } else if (totalQuestions >= 10 && incorrectAnswers / totalQuestions >= 0.6) {
         shapeLevel = Math.max(0, shapeLevel - 1);
         colorLevel = Math.max(0, colorLevel - 1);
     }
 }
+
 function playVoiceClips(color, shape) {
     const colorClip = new Audio(`Assets/Sounds/vc_${color}.mp3`);
     const shapeClip = new Audio(`Assets/Sounds/vc_${shape}.mp3`);
@@ -344,9 +385,26 @@ function nextRound() {
     choicesContainer.innerHTML = "";
     feedback.textContent = ""; // Clear feedback message
 
-    const correctChoice = generateValidQuestion();
-    correctAnswer = [correctChoice.color, correctChoice.shape];
+    const colorsCombined = getCombinedLevels(colorLevel, colors);
+    const shapesCombined = getCombinedLevels(shapeLevel, shapes);
 
+    // Ensure unanswered combinations are populated for the current level
+    if (unansweredCombinations.size === 0) {
+        generateAllCombinations(colorsCombined, shapesCombined);
+    }
+
+    let correctChoice;
+    // 75%-25% logic: prefer an unanswered combination
+    if (Math.random() < 0.75 && unansweredCombinations.size > 0) {
+        const [nextCombination] = unansweredCombinations;
+        const [color, shape] = nextCombination.split('-');
+        unansweredCombinations.delete(nextCombination);
+        correctChoice = { color, shape };
+    } else {
+        correctChoice = generateValidQuestion();
+    }
+
+    correctAnswer = [correctChoice.color, correctChoice.shape];
     instruction.textContent = `Which is the ${correctChoice.color} ${correctChoice.shape}?`;
 
     if (firstRound) {
